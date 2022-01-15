@@ -1,1 +1,17 @@
 node_modules/
+certificates/
+dist/
+packages/server/certificates/serverCert.crt
+packages/server/certificates/serverKey.key
+packages/server/dist/server.js
+packages/server/dist/server.js.map
+packages/server/dist/server/__tests__/sql.test.js
+packages/server/dist/server/__tests__/sql.test.js.map
+packages/server/dist/server/src/server.js.map
+packages/server/dist/server/src/setPassword.js
+packages/server/dist/server/src/setPassword.js.map
+packages/server/dist/server/src/sqlUtils.js
+packages/server/dist/server/src/sqlUtils.js.map
+packages/server/dist/shared/src/types.js
+packages/server/dist/shared/src/types.js.map
+packages/server/.env

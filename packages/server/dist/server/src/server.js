@@ -18,7 +18,9 @@ const https_1 = __importDefault(require("https"));
 const path_1 = __importDefault(require("path"));
 const express_1 = __importDefault(require("express"));
 const isomorphic_dompurify_1 = __importDefault(require("isomorphic-dompurify"));
-const sqlUtils_1 = __importDefault(require("./sqlUtils"));
+const commonUtils_1 = __importDefault(require("./sqlUtils/commonUtils"));
+const accessUtils_1 = __importDefault(require("./sqlutils/accessUtils"));
+const workspaceUtils_1 = __importDefault(require("./sqlutils/workspaceUtils"));
 const types_1 = require("../../shared/src/types");
 const app = express_1.default();
 const port = 8443;
@@ -69,7 +71,7 @@ app.post("/api/getaccesscode", jsonParser, (req, res) => __awaiter(void 0, void 
         const params = req.body;
         const userid = isomorphic_dompurify_1.default.sanitize(params.userid);
         const password = isomorphic_dompurify_1.default.sanitize(params.password);
-        const accessToken = yield sqlUtils_1.default.getAccessToken(userid, password);
+        const accessToken = yield accessUtils_1.default.getAccessToken(userid, password);
         if (accessToken === null) {
             res.status(401).json({ error: "Invalid userid or password" });
         }
@@ -91,7 +93,7 @@ app.post("/api/getaccesskey", jsonParser, (req, res) => __awaiter(void 0, void 0
         const params = req.body;
         const userid = isomorphic_dompurify_1.default.sanitize(params.userid);
         const accessToken = isomorphic_dompurify_1.default.sanitize(params.accesstoken);
-        const response = yield sqlUtils_1.default.getAccessKey(userid, parseInt(accessToken));
+        const response = yield accessUtils_1.default.getAccessKey(userid, parseInt(accessToken));
         console.log("Access key=", response);
         if (response.error !== types_1.ERRORS.OK) {
             res.status(401).json(response);
@@ -99,7 +101,7 @@ app.post("/api/getaccesskey", jsonParser, (req, res) => __awaiter(void 0, void 0
         else {
             response.isOrgAdmin = isOrgAdmin(userid);
             // Now find out if this is a workspace admin
-            response.isWorkspaceAdmin = yield sqlUtils_1.default.isWorkspaceAdmin(response.userid);
+            response.isWorkspaceAdmin = yield accessUtils_1.default.isWorkspaceAdmin(response.userid);
             res.status(200).json(response);
         }
     }
@@ -128,7 +130,7 @@ app.post("/api/getworkspaces", jsonParser, (req, res) => __awaiter(void 0, void 
         const userid = params.userid;
         const accessKey = isomorphic_dompurify_1.default.sanitize(params.accessKey);
         let response = { error: types_1.ERRORS.UNKNOWN };
-        const userInfo = yield sqlUtils_1.default.checkAccess(accessKey, userid);
+        const userInfo = yield accessUtils_1.default.checkAccess(accessKey, userid);
         response.error = userInfo.error;
         if (userInfo.error !== types_1.ERRORS.OK) {
             res.status(400).json(response);
@@ -136,9 +138,9 @@ app.post("/api/getworkspaces", jsonParser, (req, res) => __awaiter(void 0, void 
         }
         else {
             const orgAdmin = isOrgAdmin(userInfo.userInfo.useridemail);
-            const isWorkspaceAdmin = yield sqlUtils_1.default.isWorkspaceAdmin(userid);
+            const isWorkspaceAdmin = yield accessUtils_1.default.isWorkspaceAdmin(userid);
             if (orgAdmin || isWorkspaceAdmin) {
-                response = yield sqlUtils_1.default.getWorkspaces(userid, orgAdmin);
+                response = yield workspaceUtils_1.default.getWorkspaces(userid, orgAdmin);
                 response.error = types_1.ERRORS.OK;
                 res.status(200).json(response);
             }
@@ -162,7 +164,7 @@ app.post("/api/createworkspace", jsonParser, (req, res) => __awaiter(void 0, voi
         const name = isomorphic_dompurify_1.default.sanitize(params.name);
         const description = isomorphic_dompurify_1.default.sanitize(params.description);
         let response = { error: types_1.ERRORS.UNKNOWN };
-        const userInfo = yield sqlUtils_1.default.checkAccess(accessKey, userid);
+        const userInfo = yield accessUtils_1.default.checkAccess(accessKey, userid);
         response.error = userInfo.error;
         if (userInfo.error !== types_1.ERRORS.OK) {
             res.status(400).json(response);
@@ -171,7 +173,7 @@ app.post("/api/createworkspace", jsonParser, (req, res) => __awaiter(void 0, voi
         else {
             const orgAdmin = isOrgAdmin(userInfo.userInfo.useridemail);
             if (orgAdmin) {
-                const newId = yield sqlUtils_1.default.createWorkspace(userid, name, description);
+                const newId = yield workspaceUtils_1.default.createWorkspace(userid, name, description);
                 if (newId !== 0) {
                     response.error = types_1.ERRORS.OK;
                     response.id = newId;
@@ -196,13 +198,15 @@ app.post("/api/updateworkspace", jsonParser, (req, res) => __awaiter(void 0, voi
     res.setHeader("Content-Type", "application/json");
     try {
         const params = req.body;
-        const userId = params.userid;
+        const userId = params.userId;
         const accessKey = isomorphic_dompurify_1.default.sanitize(params.accessKey);
         const workspaceId = params.id;
         const name = isomorphic_dompurify_1.default.sanitize(params.name);
         const description = isomorphic_dompurify_1.default.sanitize(params.description);
         let response = { error: types_1.ERRORS.UNKNOWN };
-        const userInfo = yield sqlUtils_1.default.checkAccess(accessKey, userId);
+        const userInfo = yield accessUtils_1.default.checkAccess(accessKey, userId);
+        console.log("In update workspace", userId, name, description);
+        console.log("Params=", params);
         response.error = userInfo.error;
         if (userInfo.error !== types_1.ERRORS.OK) {
             res.status(400).json(response);
@@ -211,7 +215,7 @@ app.post("/api/updateworkspace", jsonParser, (req, res) => __awaiter(void 0, voi
         else {
             const orgAdmin = isOrgAdmin(userInfo.userInfo.useridemail);
             if (orgAdmin) {
-                const isOk = yield sqlUtils_1.default.updateWorkspace(userId, workspaceId, name, description);
+                const isOk = yield workspaceUtils_1.default.updateWorkspace(userId, workspaceId, name, description);
                 if (isOk) {
                     response.error = types_1.ERRORS.OK;
                     res.status(200).json(response);
@@ -233,19 +237,19 @@ app.post("/api/updateworkspace", jsonParser, (req, res) => __awaiter(void 0, voi
     }
 }));
 process.on("uncaughtException", (err) => {
-    sqlUtils_1.default.close();
+    commonUtils_1.default.close();
     console.log(`An error occured! The app is already running.`);
 });
 const httpsServer = https_1.default.createServer(credentials, app);
 // Test that the sql server is up.
 const testConnection = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const connection = yield sqlUtils_1.default.getConnection();
+        const connection = yield commonUtils_1.default.getConnection();
         connection.release();
     }
     catch (exc) {
         console.log("Could not connect to the database.  Check your password");
-        sqlUtils_1.default.close();
+        commonUtils_1.default.close();
         process.abort();
     }
 });

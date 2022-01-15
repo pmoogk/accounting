@@ -1,6 +1,9 @@
 drop database accounting;
 create database accounting;
 use accounting;
+
+create table config (jsondata JSON);
+
 create table workspace ( 
      id INTEGER NOT NULL AUTO_INCREMENT,
      name TEXT NOT NULL,
@@ -8,31 +11,36 @@ create table workspace (
      PRIMARY KEY (id)
 );
 
+create index workspaceindex on workspace (name(15));
+
 create table user (
     id INTEGER NOT NULL AUTO_INCREMENT,
     firstname TEXT,
     lastname TEXT,
-    userid TEXT,
+    useridemail TEXT,
     passwrd TEXT default null,
     lastaccessdate datetime default null,
+    accesstokentries INTEGER default 0,
     accesstoken INTEGER default 0,
     accesskey TEXT default null,
     resetkey TEXT default null,
     PRIMARY key (id)
 );
 
-create index emaillookup on user (userid(15));
+create index emaillookup on user (useridemail(15));
 
 create table userrole (
   id INTEGER NOT NULL AUTO_INCREMENT,
   name TEXT,
-  orgadmin boolean default false,
   workspaceadmin boolean default false,
+  readaccess boolean default false,
   writeaccess boolean default false,
   approver boolean default false,
   auditor boolean default false,
   PRIMARY key (id)
 );
+
+create index userroleindex on userrole (name(15));
 
 create table workspaceaccess (
   workspaceid integer,
@@ -69,6 +77,7 @@ create table transaction (
    id INTEGER NOT NULL AUTO_INCREMENT,
    yearMonth integer,
    day integer,
+   description text,
    ownerAccountId integer,
    referenceAccountId integer,
    ownerTransactionId integer,
@@ -85,41 +94,3 @@ create table transaction (
 );
 
 create index tranactionDate on transaction (yearMonth);
-
-insert into workspace (name, description) values ('rootworkspace', 'Root workspace');
-insert into user (firstname, lastname, userid, lastaccessdate, accesstoken, accesskey)
-            values ('Peter', 'Moogk', 'peter@test.com', now(), null, null );
-
-insert into userrole (name, orgadmin, workspaceadmin, writeaccess, approver, auditor)
-            values ('Organization admin', true, true, true, true, true),
-                   ('Workspace admin', false, true, false, false, false),
-                   ('Treasurer', false, false, true, false, false),
-                   ('Approver', false, false, false, true, false),
-                   ('Lead auditor', false, false, false, false, true),
-                   ('Auditor', false, false, false, false, false);
-
-insert into account (workspaceId, parentAccountId, name, accountType) values 
-                    (null, null, 'Fixed assets', 1), 
-                    (null, null, 'Liquid assets', 1),
-                    (null, null, 'Liabilities', 2),
-                    (null, null, 'Revenue', 3),
-                    (null, null, 'Expenses', 4);
-
-insert into account (workspaceId, parentAccountId, name, accountType) values 
-                    (1, 1, 'Building', 1), 
-                    (1, 2, 'Checking', 1),
-                    (1, 3, 'HST collected', 2),
-                    (1, 4, 'Rent', 3),
-                    (1, 4, 'Event revenue', 3),
-                    (1, 5, 'Event expenses', 4);
-
-insert into transaction (yearMonth, day, ownerAccountId, referenceAccountId,
-                         ownerTransactionId, amount,
-                         cleared, lastUpdateUser) values 
-                         ( 202107, 1, 7, null, null, 100000, false, 1);
-
-insert into transaction (yearMonth, day, ownerAccountId, referenceAccountId,
-                         ownerTransactionId, amount,
-                         cleared, lastUpdateUser) values 
-                         ( 202107, 1, 7, 9, last_insert_id(), 90000, false, 1),
-                         ( 202107, 1, 7, 8, last_insert_id(), -10000, false, 1);
